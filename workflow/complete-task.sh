@@ -76,7 +76,7 @@ check_config() {
 get_linear_issue() {
     local issue_id="$1"
     
-    print_status "Fetching Linear issue: $issue_id"
+    print_status "Fetching Linear issue: $issue_id" >&2
     
     local query='{
         "query": "query GetIssue($id: String!) { issue(id: $id) { id identifier title description state { name id } team { key } labels { nodes { name } } } }",
@@ -106,7 +106,7 @@ get_linear_issue() {
 
 # Function to get workflow states
 get_workflow_states() {
-    print_status "Fetching workflow states..."
+    print_status "Fetching workflow states..." >&2
     
     local query='{
         "query": "query GetWorkflowStates { workflowStates { nodes { id name type } } }"
@@ -154,13 +154,7 @@ update_issue_status() {
     fi
     
     local mutation='{
-        "query": "mutation UpdateIssue($input: IssueUpdateInput!) { issueUpdate(input: $input) { success issue { id state { name } } } }",
-        "variables": {
-            "input": {
-                "id": "'$issue_id'",
-                "stateId": "'$done_state_id'"
-            }
-        }
+        "query": "mutation { issueUpdate(id: \"'$issue_id'\", input: { stateId: \"'$done_state_id'\" }) { success issue { id identifier state { name } } } }"
     }'
     
     local response=$(curl -s -X POST \
@@ -181,13 +175,13 @@ update_issue_status() {
 analyze_git_commits() {
     local base_branch="$1"
     
-    print_status "Analyzing git commits..."
+    print_status "Analyzing git commits..." >&2
     
     # Get current branch
     local current_branch=$(git branch --show-current)
     
     if [[ -z "$current_branch" ]]; then
-        print_error "Could not determine current branch"
+        print_error "Could not determine current branch" >&2
         return 1
     fi
     
@@ -195,14 +189,20 @@ analyze_git_commits() {
     local commits=$(git log --oneline "$base_branch..$current_branch" 2>/dev/null || git log --oneline -10)
     
     if [[ -z "$commits" ]]; then
-        print_warning "No commits found in current branch"
-        echo "0 0 0 0 0 0 0 0"
+        print_warning "No commits found in current branch" >&2
+        echo "0 0 0 0 0 0 0 0 unknown"
         return 0
     fi
     
     local total_commits=$(echo "$commits" | wc -l | tr -d ' ')
     local ai_commits=$(echo "$commits" | grep -c "\[AI\]" || echo "0")
     local dev_commits=$(echo "$commits" | grep -c "\[DEV\]" || echo "0")
+    
+    # Ensure numeric values
+    [[ "$total_commits" =~ ^[0-9]+$ ]] || total_commits=0
+    [[ "$ai_commits" =~ ^[0-9]+$ ]] || ai_commits=0
+    [[ "$dev_commits" =~ ^[0-9]+$ ]] || dev_commits=0
+    
     local other_commits=$((total_commits - ai_commits - dev_commits))
     
     # Calculate AI/Dev percentages
@@ -225,9 +225,14 @@ analyze_git_commits() {
         # Extract stats from git diff --stat output
         local stats_line=$(echo "$git_stats" | tail -1)
         if [[ "$stats_line" == *"insertion"* || "$stats_line" == *"deletion"* ]]; then
-            lines_added=$(echo "$stats_line" | grep -o '[0-9]\+ insertion' | grep -o '[0-9]\+' || echo "0")
-            lines_removed=$(echo "$stats_line" | grep -o '[0-9]\+ deletion' | grep -o '[0-9]\+' || echo "0")
-            files_changed=$(echo "$stats_line" | grep -o '[0-9]\+ file' | grep -o '[0-9]\+' || echo "0")
+            lines_added=$(echo "$stats_line" | grep -o '[0-9]\+ insertion' | grep -o '[0-9]\+' | head -1 || echo "0")
+            lines_removed=$(echo "$stats_line" | grep -o '[0-9]\+ deletion' | grep -o '[0-9]\+' | head -1 || echo "0")
+            files_changed=$(echo "$stats_line" | grep -o '[0-9]\+ file' | grep -o '[0-9]\+' | head -1 || echo "0")
+            
+            # Ensure numeric values
+            [[ "$lines_added" =~ ^[0-9]+$ ]] || lines_added=0
+            [[ "$lines_removed" =~ ^[0-9]+$ ]] || lines_removed=0
+            [[ "$files_changed" =~ ^[0-9]+$ ]] || files_changed=0
         fi
     fi
     
@@ -252,35 +257,19 @@ create_metrics_comment() {
     local files_changed="${10}"
     local branch_age="${11}"
     
-    print_status "Creating task metrics comment..."
+    print_status "Creating task metrics comment..." >&2
     
     local current_date=$(date +"%Y-%m-%d")
     local current_branch=$(git branch --show-current)
     
-    local comment_body="[TASK_METRICS]
-**Summary:** AI: ${ai_percentage}%, Dev: ${dev_percentage}%, Completed on: ${current_date}
-
-**Development Breakdown:**
-- **Commits - Total:** ${total_commits}
-- **Commits - AI:** ${ai_commits}
-- **Commits - Dev:** ${dev_commits}
-- **Commits - Other:** ${other_commits}
-- **Duration:** ${branch_age}
-
-**Code Changes:**
-- **Lines Added:** ${lines_added}
-- **Lines Removed:** ${lines_removed}
-- **Files Changed:** ${files_changed}
-
-**Branch:** ${current_branch}
-**Analysis Date:** ${current_date}"
+    local comment_body="✅ **Task Completed** - ${current_date}\\n\\n🤖 **AI/Dev Split:** ${ai_percentage}% AI, ${dev_percentage}% Dev\\n📊 **Commits:** ${total_commits} total (${ai_commits} AI, ${dev_commits} Dev)\\n📝 **Changes:** +${lines_added}/-${lines_removed} lines, ${files_changed} files\\n⏱️ **Duration:** ${branch_age}\\n🌿 **Branch:** ${current_branch}"
     
     local mutation='{
         "query": "mutation CreateComment($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id } } }",
         "variables": {
             "input": {
                 "issueId": "'$issue_id'",
-                "body": "'"$(echo "$comment_body" | sed 's/"/\\"/g' | tr '\n' '\\' | sed 's/\\/\\n/g')"'"
+                "body": "'$comment_body'"
             }
         }
     }'
@@ -292,11 +281,21 @@ create_metrics_comment() {
         "https://api.linear.app/graphql")
     
     if echo "$response" | jq -e '.errors' > /dev/null; then
-        print_error "Failed to create metrics comment: $(echo "$response" | jq -r '.errors[0].message')"
+        print_error "Failed to create metrics comment: $(echo "$response" | jq -r '.errors[0].message')" >&2
         return 1
     fi
     
-    print_success "Task metrics comment added to Linear issue"
+    # Check if comment was successfully created
+    local comment_success=$(echo "$response" | jq -r '.data.commentCreate.success')
+    local comment_id=$(echo "$response" | jq -r '.data.commentCreate.comment.id // empty')
+    
+    if [[ "$comment_success" == "true" && -n "$comment_id" ]]; then
+        print_success "Task metrics comment added to Linear issue (ID: $comment_id)" >&2
+        return 0
+    else
+        print_error "Failed to create metrics comment - success: $comment_success" >&2
+        return 1
+    fi
 }
 
 # Main function
@@ -381,19 +380,46 @@ main() {
     fi
     
     # Analyze git commits
+    print_status "Analyzing git commit metrics..."
     local commit_analysis=$(analyze_git_commits "$base_branch")
-    read -r ai_percentage dev_percentage total_commits ai_commits dev_commits other_commits lines_added lines_removed files_changed branch_age <<< "$commit_analysis"
+    
+    # Parse the analysis results
+    local metrics_array=($commit_analysis)
+    local ai_percentage=${metrics_array[0]:-0}
+    local dev_percentage=${metrics_array[1]:-0}
+    local total_commits=${metrics_array[2]:-0}
+    local ai_commits=${metrics_array[3]:-0}
+    local dev_commits=${metrics_array[4]:-0}
+    local other_commits=${metrics_array[5]:-0}
+    local lines_added=${metrics_array[6]:-0}
+    local lines_removed=${metrics_array[7]:-0}
+    local files_changed=${metrics_array[8]:-0}
+    local branch_age=${metrics_array[9]:-"unknown"}
     
     # Create metrics comment
-    create_metrics_comment "$internal_id" "$ai_percentage" "$dev_percentage" "$total_commits" "$ai_commits" "$dev_commits" "$other_commits" "$lines_added" "$lines_removed" "$files_changed" "$branch_age"
-    
-    echo ""
-    print_success "Task completion process finished!"
-    echo "📋 Issue: $issue_title"
-    echo "🔢 AI/Dev Split: ${ai_percentage}%/${dev_percentage}%"
-    echo "📊 Commits: $total_commits total ($ai_commits AI, $dev_commits Dev, $other_commits Other)"
-    echo "📝 Code Changes: +$lines_added/-$lines_removed lines, $files_changed files"
-    echo "⏱️  Duration: $branch_age"
+    print_status "Posting task completion metrics..."
+    if create_metrics_comment "$internal_id" "$ai_percentage" "$dev_percentage" "$total_commits" "$ai_commits" "$dev_commits" "$other_commits" "$lines_added" "$lines_removed" "$files_changed" "$branch_age"; then
+        echo ""
+        print_success "Task completion process finished!"
+        echo "📋 Issue: $issue_title"
+        echo "🔢 AI/Dev Split: ${ai_percentage}%/${dev_percentage}%"
+        echo "📊 Commits: $total_commits total ($ai_commits AI, $dev_commits Dev, $other_commits Other)"
+        echo "📝 Code Changes: +$lines_added/-$lines_removed lines, $files_changed files"
+        echo "⏱️  Duration: $branch_age"
+        echo ""
+        print_success "✅ Metrics comment posted to Linear issue successfully!"
+    else
+        echo ""
+        print_error "Task completion process had issues with metrics posting"
+        echo "📋 Issue: $issue_title"
+        echo "🔢 AI/Dev Split: ${ai_percentage}%/${dev_percentage}%"
+        echo "📊 Commits: $total_commits total ($ai_commits AI, $dev_commits Dev, $other_commits Other)"
+        echo "📝 Code Changes: +$lines_added/-$lines_removed lines, $files_changed files"
+        echo "⏱️  Duration: $branch_age"
+        echo ""
+        print_warning "⚠️  Please check Linear issue manually for metrics comment"
+        exit 1
+    fi
 }
 
 # Run main function with all arguments
