@@ -161,11 +161,12 @@ create_github_branch() {
         else
             print_error "Failed to create branch: $error_msg"
             echo "Full response: $create_response"
-            exit 1
+            return 1
         fi
     fi
     
     print_success "Branch created: $branch_name"
+    return 0
 }
 
 # Function to update Linear issue with branch link
@@ -381,14 +382,19 @@ main() {
     print_status "Generated branch name: $branch_name"
     
     # Create GitHub branch
-    create_github_branch "$branch_name" "$base_branch"
+    if ! create_github_branch "$branch_name" "$base_branch"; then
+        print_error "Branch creation failed. Stopping execution."
+        exit 1
+    fi
     
     # Update Linear issue
     update_linear_issue "$issue_id" "$branch_name"
     
     # Checkout branch locally (unless skipped)
     if [[ "$skip_checkout" == false ]]; then
-        checkout_branch_locally "$branch_name" "$base_branch"
+        if ! checkout_branch_locally "$branch_name" "$base_branch"; then
+            print_warning "Branch checkout failed, but branch was created successfully"
+        fi
     fi
     
     echo ""
