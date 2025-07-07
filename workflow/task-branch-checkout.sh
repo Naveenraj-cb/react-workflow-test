@@ -5,117 +5,55 @@
 
 set -e
 
-# Load environment variables from .env.local
-if [[ -f "$(dirname "$0")/.env.local" ]]; then
-    source "$(dirname "$0")/.env.local"
-fi
+# Load common utilities
+source "$(dirname "$0")/common-utils.sh"
+
+# Load environment variables
+load_env
+
 DEFAULT_BASE_BRANCH="main"
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
 
 # Function to check if required tools are installed
 check_prerequisites() {
-    print_status "Checking prerequisites..."
-    
-    if ! command -v curl &> /dev/null; then
-        print_error "curl is required but not installed"
-        exit 1
-    fi
-    
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required but not installed. Please install jq first."
-        echo "  macOS: brew install jq"
-        echo "  Ubuntu: sudo apt-get install jq"
-        echo "  Windows: Download from https://stedolan.github.io/jq/"
-        exit 1
-    fi
-    
-    if ! command -v git &> /dev/null; then
-        print_error "git is required but not installed"
-        exit 1
-    fi
-    
-    print_success "All prerequisites are installed"
+    check_basic_prerequisites
 }
 
 # Function to validate environment variables
 check_config() {
     print_status "Checking configuration..."
     
-    if [[ -z "$LINEAR_API_TOKEN" || "$LINEAR_API_TOKEN" == "your_linear_api_token_here" ]]; then
-        print_error "LINEAR_API_TOKEN not set. Please set it in .env.local file."
-        echo "Get your token from: https://linear.app/settings/api"
-        exit 1
+    local failed=false
+    
+    if ! validate_env_var "LINEAR_API_TOKEN" "$LINEAR_API_TOKEN" "Get your token from: https://linear.app/settings/api"; then
+        failed=true
     fi
     
-    if [[ -z "$GITHUB_TOKEN" || "$GITHUB_TOKEN" == "your_github_token_here" ]]; then
-        print_error "GITHUB_TOKEN not set. Please set it in .env.local file."
-        echo "Get your token from: https://github.com/settings/tokens"
-        exit 1
+    if ! validate_env_var "GITHUB_TOKEN" "$GITHUB_TOKEN" "Get your token from: https://github.com/settings/tokens"; then
+        failed=true
     fi
     
-    if [[ -z "$GITHUB_REPO" ]]; then
-        print_error "GITHUB_REPO not set. Please set it in .env.local file."
-        echo "Format: owner/repository-name"
+    if ! validate_env_var "GITHUB_REPO" "$GITHUB_REPO" "Format: owner/repository-name"; then
+        failed=true
+    fi
+    
+    if [[ "$failed" == true ]]; then
         exit 1
     fi
     
     print_success "Configuration is valid"
 }
 
-# Function to get Linear issue details
-get_linear_issue() {
+# Function to get Linear issue details (using common utility)
+get_linear_issue_local() {
     local issue_id="$1"
     
-    print_status "Fetching Linear issue: $issue_id" >&2
-    
-    local query='{
-        "query": "query GetIssue($id: String!) { issue(id: $id) { id identifier title description state { name } team { key } labels { nodes { name } } } }",
-        "variables": { "id": "'$issue_id'" }
-    }'
-    
-    local response=$(curl -s -X POST \
-        -H "Authorization: $LINEAR_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$query" \
-        "https://api.linear.app/graphql")
-    
-    
-    # Check if response is valid JSON
-    if ! echo "$response" | jq . > /dev/null 2>&1; then
-        print_error "Invalid JSON response from Linear API"
-        echo "Response: $response"
-        exit 1
+    local issue_data=$(get_linear_issue "$issue_id")
+    if [[ $? -ne 0 || "$issue_data" == "null" ]]; then
+        return 1
     fi
     
-    if echo "$response" | jq -e '.errors' > /dev/null; then
-        print_error "Failed to fetch Linear issue: $(echo "$response" | jq -r '.errors[0].message')"
-        exit 1
-    fi
-    
-    echo "$response" | jq -r '.data.issue'
+    echo "$issue_data"
+    return 0
 }
 
 # Function to create GitHub branch
@@ -177,67 +115,19 @@ update_linear_issue() {
     print_status "Adding branch link as comment to Linear issue"
     
     local branch_url="https://github.com/$GITHUB_REPO/tree/$branch_name"
-    local created_date=$(date +"%d/%m/%Y %I:%M %p")
+    local created_date=$(get_current_date)
     local comment_body="🌿 **Branch created:** [$branch_name]($branch_url) - $created_date\n\nThis branch is ready for development. You can start working on this issue!"
     
     # Create attachment for branch link
-    local attachment_mutation='{
-        "query": "mutation CreateAttachment($input: AttachmentCreateInput!) { attachmentCreate(input: $input) { success attachment { id } } }",
-        "variables": {
-            "input": {
-                "issueId": "'$issue_id'",
-                "title": "GitHub Branch: '$branch_name'",
-                "subtitle": "Created '$created_date'",
-                "url": "'$branch_url'",
-                "iconUrl": "https://github.com/favicon.ico"
-            }
-        }
-    }'
+    local attachment_id=$(create_linear_attachment "$issue_id" "GitHub Branch: '$branch_name'" "Created '$created_date'" "$branch_url" "https://github.com/favicon.ico")
+    local attachment_success=$?
     
-    local attachment_response=$(curl -s -X POST \
-        -H "Authorization: $LINEAR_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$attachment_mutation" \
-        "https://api.linear.app/graphql")
-    
-    # Also create a comment for context
-    local mutation='{
-        "query": "mutation CreateComment($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id } } }",
-        "variables": {
-            "input": {
-                "issueId": "'$issue_id'",
-                "body": "'$comment_body'"
-            }
-        }
-    }'
-    
-    local response=$(curl -s -X POST \
-        -H "Authorization: $LINEAR_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$mutation" \
-        "https://api.linear.app/graphql")
-    
-    local attachment_success=true
-    local comment_success=true
-    
-    # Check attachment creation
-    if echo "$attachment_response" | jq -e '.errors' > /dev/null; then
-        print_warning "Could not create branch attachment: $(echo "$attachment_response" | jq -r '.errors[0].message')"
-        attachment_success=false
-    else
-        print_success "Branch attachment created in Linear issue"
-    fi
-    
-    # Check comment creation
-    if echo "$response" | jq -e '.errors' > /dev/null; then
-        print_warning "Could not add comment to Linear issue: $(echo "$response" | jq -r '.errors[0].message')"
-        comment_success=false
-    else
-        print_success "Branch comment added to Linear issue"
-    fi
+    # Create comment for context
+    local comment_id=$(create_linear_comment "$issue_id" "$comment_body")
+    local comment_success=$?
     
     # Return failure if either attachment or comment failed
-    if [[ "$attachment_success" == false || "$comment_success" == false ]]; then
+    if [[ $attachment_success -ne 0 || $comment_success -ne 0 ]]; then
         print_error "Linear integration failed (attachment or comment creation failed)"
         return 1
     fi
@@ -363,7 +253,7 @@ main() {
     check_config
     
     # Get Linear issue details
-    local issue_data=$(get_linear_issue "$issue_id")
+    local issue_data=$(get_linear_issue_local "$issue_id")
     
     if [[ "$issue_data" == "null" || -z "$issue_data" ]]; then
         print_error "Issue not found or failed to fetch: $issue_id"

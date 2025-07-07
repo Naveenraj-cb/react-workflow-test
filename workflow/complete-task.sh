@@ -5,67 +5,22 @@
 
 set -e
 
-# Load environment variables from .env.local
-if [[ -f "$(dirname "$0")/.env.local" ]]; then
-    source "$(dirname "$0")/.env.local"
-fi
+# Load common utilities
+source "$(dirname "$0")/common-utils.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+# Load environment variables
+load_env
 
 # Function to check if required tools are installed
 check_prerequisites() {
-    print_status "Checking prerequisites..."
-    
-    if ! command -v curl &> /dev/null; then
-        print_error "curl is required but not installed"
-        exit 1
-    fi
-    
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required but not installed. Please install jq first."
-        echo "  macOS: brew install jq"
-        echo "  Ubuntu: sudo apt-get install jq"
-        echo "  Windows: Download from https://stedolan.github.io/jq/"
-        exit 1
-    fi
-    
-    if ! command -v git &> /dev/null; then
-        print_error "git is required but not installed"
-        exit 1
-    fi
-    
-    print_success "All prerequisites are installed"
+    check_basic_prerequisites
 }
 
 # Function to validate environment variables
 check_config() {
     print_status "Checking configuration..."
     
-    if [[ -z "$LINEAR_API_TOKEN" ]]; then
-        print_error "LINEAR_API_TOKEN not set. Please set it in .env.local file."
-        echo "Get your token from: https://linear.app/settings/api"
+    if ! validate_env_var "LINEAR_API_TOKEN" "$LINEAR_API_TOKEN" "Get your token from: https://linear.app/settings/api"; then
         exit 1
     fi
     

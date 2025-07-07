@@ -5,61 +5,19 @@
 
 set -e
 
-# Load environment variables from .env.local
-if [[ -f "$(dirname "$0")/.env.local" ]]; then
-    source "$(dirname "$0")/.env.local"
-fi
+# Load common utilities
+source "$(dirname "$0")/common-utils.sh"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+# Load environment variables
+load_env
 
 # Function to check if required tools are installed
 check_prerequisites() {
-    print_status "Checking prerequisites..."
+    check_basic_prerequisites
     
-    if ! command -v git &> /dev/null; then
-        print_error "git is required but not installed"
-        exit 1
-    fi
-    
-    if ! command -v gh &> /dev/null; then
-        print_error "GitHub CLI (gh) is required but not installed"
-        echo "  Install from: https://cli.github.com/"
-        echo "  macOS: brew install gh"
-        echo "  Ubuntu: sudo apt install gh"
-        exit 1
-    fi
-    
-    if ! command -v curl &> /dev/null; then
-        print_error "curl is required but not installed"
-        exit 1
-    fi
-    
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required but not installed. Please install jq first."
-        echo "  macOS: brew install jq"
-        echo "  Ubuntu: sudo apt-get install jq"
+    if ! check_tool "gh" "Install from: https://cli.github.com/
+  macOS: brew install gh
+  Ubuntu: sudo apt install gh"; then
         exit 1
     fi
     
@@ -85,8 +43,8 @@ check_config() {
     print_success "Configuration is valid"
 }
 
-# Function to get Linear issue details
-get_linear_issue() {
+# Function to get Linear issue details (using common utility)
+get_linear_issue_local() {
     local issue_id="$1"
     
     if [[ -z "$LINEAR_API_TOKEN" ]]; then
@@ -94,50 +52,18 @@ get_linear_issue() {
         return
     fi
     
-    print_status "Fetching Linear issue: $issue_id" >&2
-    
-    local query='{
-        "query": "query GetIssue($id: String!) { issue(id: $id) { id identifier title description state { name id } team { key } labels { nodes { name } } } }",
-        "variables": { "id": "'$issue_id'" }
-    }'
-    
-    local response=$(curl -s -X POST \
-        -H "Authorization: $LINEAR_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$query" \
-        "https://api.linear.app/graphql")
-    
-    # Check if response is valid JSON
-    if ! echo "$response" | jq . > /dev/null 2>&1; then
-        print_warning "Invalid JSON response from Linear API" >&2
+    local issue_data=$(get_linear_issue "$issue_id" true)
+    if [[ $? -ne 0 || "$issue_data" == "null" ]]; then
+        print_warning "Failed to fetch Linear issue: $issue_id" >&2
         echo "null"
         return
     fi
     
-    if echo "$response" | jq -e '.errors' > /dev/null; then
-        print_warning "Failed to fetch Linear issue: $(echo "$response" | jq -r '.errors[0].message')" >&2
-        echo "null"
-        return
-    fi
-    
-    echo "$response" | jq -r '.data.issue'
+    echo "$issue_data"
 }
 
-# Function to extract Linear issue ID from branch name
-extract_issue_id_from_branch() {
-    local branch_name="$1"
-    
-    # Try to extract issue ID from branch name patterns like:
-    # - feature/COD-294
-    # - feature/linear-COD-294-add-hello-world
-    # - COD-294-some-description
-    
-    if [[ "$branch_name" =~ ([A-Z]+-[0-9]+) ]]; then
-        echo "${BASH_REMATCH[1]}"
-    else
-        echo ""
-    fi
-}
+# Function to extract Linear issue ID from branch name (using common utility)
+# This function is now provided by common-utils.sh
 
 # Function to create PR title and description
 create_pr_content() {
@@ -160,7 +86,7 @@ create_pr_content() {
     
     # Try to get Linear issue details if issue_id is provided
     if [[ -n "$issue_id" ]]; then
-        local issue_data=$(get_linear_issue "$issue_id")
+        local issue_data=$(get_linear_issue_local "$issue_id")
         
         if [[ "$issue_data" != "null" && -n "$issue_data" ]]; then
             local issue_title=$(echo "$issue_data" | jq -r '.title // empty')
@@ -227,34 +153,17 @@ connect_pr_to_linear() {
     
     # Extract PR number from URL
     local pr_number=$(echo "$pr_url" | grep -o '[0-9]\+$')
-    local created_date=$(date +"%d/%m/%Y %I:%M %p")
+    local created_date=$(get_current_date)
     
     # Create attachment for PR
-    local attachment_mutation='{
-        "query": "mutation CreateAttachment($input: AttachmentCreateInput!) { attachmentCreate(input: $input) { success attachment { id } } }",
-        "variables": {
-            "input": {
-                "issueId": "'$issue_id'",
-                "title": "GitHub PR #'$pr_number': '$pr_title'",
-                "subtitle": "Created '$created_date'",
-                "url": "'$pr_url'",
-                "iconUrl": "https://github.com/favicon.ico"
-            }
-        }
-    }'
+    local attachment_id=$(create_linear_attachment "$issue_id" "GitHub PR #$pr_number: '$pr_title'" "Created '$created_date'" "$pr_url" "https://github.com/favicon.ico" true)
     
-    local response=$(curl -s -X POST \
-        -H "Authorization: $LINEAR_API_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d "$attachment_mutation" \
-        "https://api.linear.app/graphql")
-    
-    if echo "$response" | jq -e '.errors' > /dev/null; then
-        print_warning "Could not connect PR to Linear: $(echo "$response" | jq -r '.errors[0].message')"
-        return 1
-    else
+    if [[ $? -eq 0 ]]; then
         print_success "PR connected to Linear issue"
         return 0
+    else
+        print_warning "Could not connect PR to Linear"
+        return 1
     fi
 }
 
@@ -371,7 +280,7 @@ main() {
     check_config
     
     # Get current branch
-    local current_branch=$(git branch --show-current)
+    local current_branch=$(get_current_branch)
     
     if [[ -z "$current_branch" ]]; then
         print_error "Could not determine current branch"
