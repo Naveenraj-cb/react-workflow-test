@@ -217,9 +217,13 @@ update_linear_issue() {
         -d "$mutation" \
         "https://api.linear.app/graphql")
     
+    local attachment_success=true
+    local comment_success=true
+    
     # Check attachment creation
     if echo "$attachment_response" | jq -e '.errors' > /dev/null; then
         print_warning "Could not create branch attachment: $(echo "$attachment_response" | jq -r '.errors[0].message')"
+        attachment_success=false
     else
         print_success "Branch attachment created in Linear issue"
     fi
@@ -227,9 +231,18 @@ update_linear_issue() {
     # Check comment creation
     if echo "$response" | jq -e '.errors' > /dev/null; then
         print_warning "Could not add comment to Linear issue: $(echo "$response" | jq -r '.errors[0].message')"
+        comment_success=false
     else
         print_success "Branch comment added to Linear issue"
     fi
+    
+    # Return failure if both attachment and comment failed
+    if [[ "$attachment_success" == false && "$comment_success" == false ]]; then
+        print_error "Both attachment and comment creation failed"
+        return 1
+    fi
+    
+    return 0
 }
 
 # Function to checkout branch locally
@@ -388,7 +401,10 @@ main() {
     fi
     
     # Update Linear issue
-    update_linear_issue "$issue_id" "$branch_name"
+    if ! update_linear_issue "$issue_id" "$branch_name"; then
+        print_error "Linear integration failed. Branch created but stopping execution."
+        exit 1
+    fi
     
     # Checkout branch locally (unless skipped)
     if [[ "$skip_checkout" == false ]]; then
