@@ -236,9 +236,9 @@ update_linear_issue() {
         print_success "Branch comment added to Linear issue"
     fi
     
-    # Return failure if both attachment and comment failed
-    if [[ "$attachment_success" == false && "$comment_success" == false ]]; then
-        print_error "Both attachment and comment creation failed"
+    # Return failure if either attachment or comment failed
+    if [[ "$attachment_success" == false || "$comment_success" == false ]]; then
+        print_error "Linear integration failed (attachment or comment creation failed)"
         return 1
     fi
     
