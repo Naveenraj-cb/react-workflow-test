@@ -262,7 +262,7 @@ create_metrics_comment() {
     local current_date=$(date +"%Y-%m-%d")
     local current_branch=$(git branch --show-current)
     
-    local comment_body="✅ **Task Completed** - ${current_date}\\n\\n🤖 **AI/Dev Split:** ${ai_percentage}% AI, ${dev_percentage}% Dev\\n📊 **Commits:** ${total_commits} total (${ai_commits} AI, ${dev_commits} Dev)\\n📝 **Changes:** +${lines_added}/-${lines_removed} lines, ${files_changed} files\\n⏱️ **Duration:** ${branch_age}\\n🌿 **Branch:** ${current_branch}"
+    local comment_body="✅ **Task Completed** - ${current_date}\\n\\n**PR Info:** [View PR](https://github.com/${GITHUB_REPO}/pull/)\\n\\n🤖 **AI/Dev Split:** ${ai_percentage}% AI, ${dev_percentage}% Dev\\n📊 **Commits:** ${total_commits} total (${ai_commits} AI, ${dev_commits} Dev)\\n📝 **Changes:** +${lines_added}/-${lines_removed} lines, ${files_changed} files\\n⏱️ **Duration:** ${branch_age}\\n🌿 **Branch:** ${current_branch}"
     
     local mutation='{
         "query": "mutation CreateComment($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id } } }",

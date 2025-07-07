@@ -6,16 +6,16 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 
 - `task-branch-checkout.sh` - Checkout branches for Linear tasks
 - `prompt-claude.sh` - Utility for prompting Claude AI
-- `complete-task.sh` - Marks Linear tasks as complete and adds metrics
 - `raise-pr.sh` - Creates GitHub pull requests with Linear integration
+- `complete-task.sh` - Marks Linear tasks as complete and adds metrics
 
 ## Workflow
 
 1. Use `task-branch-checkout.sh` to create and checkout feature branch from Linear task
 2. Use `prompt-claude.sh` to get AI assistance for the task
 3. Make changes and commit with appropriate prefix ([AI] or [DEV])
-4. Use `complete-task.sh` to mark Linear task as complete and add metrics
-5. Use `raise-pr.sh` to create pull request
+4. Use `raise-pr.sh` to create pull request
+5. Use `complete-task.sh` to mark Linear task as complete and add metrics
 
 ## Setup
 
@@ -62,16 +62,7 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 ./prompt-claude.sh -i COD-294 -p "Help me implement this feature"
 ```
 
-### 3. Complete Task Script
-```bash
-# Mark Linear task as complete
-./complete-task.sh -i COD-294
-
-# Skip status update, only add metrics
-./complete-task.sh -i COD-294 --skip-status-update
-```
-
-### 4. Raise PR Script
+### 3. Raise PR Script
 ```bash
 # Auto-detect issue from branch name
 ./raise-pr.sh
@@ -84,4 +75,13 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 
 # Custom title and description
 ./raise-pr.sh -t "Add new feature" -d "This PR adds..."
+```
+
+### 4. Complete Task Script
+```bash
+# Mark Linear task as complete
+./complete-task.sh -i COD-294
+
+# Skip status update, only add metrics
+./complete-task.sh -i COD-294 --skip-status-update
 ```

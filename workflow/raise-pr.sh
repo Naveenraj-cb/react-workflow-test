@@ -240,8 +240,8 @@ create_pull_request() {
     
     if [[ $? -eq 0 && -n "$pr_url" ]]; then
         print_success "Pull request created successfully!"
-        echo "=Ë Title: $pr_title"
-        echo "<? Branch: $current_branch ’ $base_branch"
+        echo "=ï¿½ Title: $pr_title"
+        echo "<? Branch: $current_branch ï¿½ $base_branch"
         echo "= URL: $pr_url"
         return 0
     else
@@ -252,7 +252,7 @@ create_pull_request() {
 
 # Main function
 main() {
-    echo "=€ Raise PR Tool"
+    echo "=ï¿½ Raise PR Tool"
     echo "================"
     
     # Parse command line arguments
@@ -374,15 +374,26 @@ main() {
     create_pull_request "$current_branch" "$base_branch" "$pr_title" "$pr_description"
     
     echo ""
-    print_success "<‰ PR creation completed successfully!"
+    print_success "<ï¿½ PR creation completed successfully!"
     
     if [[ -n "$issue_id" ]]; then
         echo ""
-        print_status "=¡ Next steps:"
+        print_status "=ï¿½ Next steps:"
         echo "   1. Review the PR and make any necessary changes"
         echo "   2. Request reviews from team members"
         echo "   3. Merge the PR when approved"
-        echo "   4. Run the complete-task script: ./complete-task.sh -i $issue_id"
+        echo ""
+        echo "ðŸ¤– Would you like to run the complete-task script now? (y/n)"
+        read -r complete_task_response
+        
+        if [[ "$complete_task_response" =~ ^[Yy]$ ]]; then
+            echo ""
+            print_status "Running complete-task script..."
+            "$(dirname "$0")/complete-task.sh" -i "$issue_id"
+        else
+            echo ""
+            print_status "Run later with: ./complete-task.sh -i $issue_id"
+        fi
     fi
 }
 
