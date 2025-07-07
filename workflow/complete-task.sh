@@ -237,7 +237,30 @@ analyze_git_commits() {
     fi
     
     # Get branch creation date (approximate duration)
-    local branch_age=$(git log --format="%cr" "$base_branch..$current_branch" 2>/dev/null | tail -1 || echo "unknown")
+    local first_commit_time=$(git log --format="%ct" "$base_branch..$current_branch" 2>/dev/null | tail -1)
+    local branch_age="unknown"
+    
+    if [[ -n "$first_commit_time" && "$first_commit_time" =~ ^[0-9]+$ ]]; then
+        local current_time=$(date +%s)
+        local duration_seconds=$(( current_time - first_commit_time ))
+        local duration_minutes=$(( duration_seconds / 60 ))
+        local duration_hours=$(( duration_minutes / 60 ))
+        local duration_days=$(( duration_hours / 24 ))
+        
+        if [[ $duration_minutes -lt 60 ]]; then
+            branch_age="${duration_minutes}m"
+        elif [[ $duration_hours -lt 24 ]]; then
+            local remaining_minutes=$(( duration_minutes % 60 ))
+            branch_age="${duration_hours}h ${remaining_minutes}m"
+        elif [[ $duration_days -le 30 ]]; then
+            local remaining_hours=$(( duration_hours % 24 ))
+            branch_age="${duration_days}d ${remaining_hours}h"
+        else
+            local duration_months=$(( duration_days / 30 ))
+            local remaining_days=$(( duration_days % 30 ))
+            branch_age="${duration_months}mo ${remaining_days}d"
+        fi
+    fi
     
     # Return values: ai_percentage dev_percentage total_commits ai_commits dev_commits other_commits lines_added lines_removed files_changed branch_age
     echo "$ai_percentage $dev_percentage $total_commits $ai_commits $dev_commits $other_commits $lines_added $lines_removed $files_changed $branch_age"
