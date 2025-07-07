@@ -179,6 +179,27 @@ update_linear_issue() {
     local created_date=$(date +"%d/%m/%Y %I:%M %p")
     local comment_body="🌿 **Branch created:** [$branch_name]($branch_url) - $created_date\n\nThis branch is ready for development. You can start working on this issue!"
     
+    # Create attachment for branch link
+    local attachment_mutation='{
+        "query": "mutation CreateAttachment($input: AttachmentCreateInput!) { attachmentCreate(input: $input) { success attachment { id } } }",
+        "variables": {
+            "input": {
+                "issueId": "'$issue_id'",
+                "title": "GitHub Branch: '$branch_name'",
+                "subtitle": "Created '$created_date'",
+                "url": "'$branch_url'",
+                "iconUrl": "https://github.com/favicon.ico"
+            }
+        }
+    }'
+    
+    local attachment_response=$(curl -s -X POST \
+        -H "Authorization: $LINEAR_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$attachment_mutation" \
+        "https://api.linear.app/graphql")
+    
+    # Also create a comment for context
     local mutation='{
         "query": "mutation CreateComment($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id } } }",
         "variables": {
@@ -195,10 +216,18 @@ update_linear_issue() {
         -d "$mutation" \
         "https://api.linear.app/graphql")
     
+    # Check attachment creation
+    if echo "$attachment_response" | jq -e '.errors' > /dev/null; then
+        print_warning "Could not create branch attachment: $(echo "$attachment_response" | jq -r '.errors[0].message')"
+    else
+        print_success "Branch attachment created in Linear issue"
+    fi
+    
+    # Check comment creation
     if echo "$response" | jq -e '.errors' > /dev/null; then
         print_warning "Could not add comment to Linear issue: $(echo "$response" | jq -r '.errors[0].message')"
     else
-        print_success "Branch link added as comment to Linear issue"
+        print_success "Branch comment added to Linear issue"
     fi
 }
 
