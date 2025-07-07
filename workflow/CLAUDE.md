@@ -30,3 +30,4 @@
 - No co-author or generated messages
 - Short and clear only
 - **Perform AI commit on every Claude execution if any changes made**
+- **Add only files changed by Agent/AI before performing AI commit**
