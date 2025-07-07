@@ -212,6 +212,52 @@ create_pr_content() {
     echo -e "$pr_title\n---\n$pr_description"
 }
 
+# Function to connect PR to Linear issue
+connect_pr_to_linear() {
+    local issue_id="$1"
+    local pr_url="$2"
+    local pr_title="$3"
+    
+    if [[ -z "$LINEAR_API_TOKEN" || -z "$issue_id" ]]; then
+        print_warning "Cannot connect PR to Linear - missing token or issue ID"
+        return 0
+    fi
+    
+    print_status "Connecting PR to Linear issue..."
+    
+    # Extract PR number from URL
+    local pr_number=$(echo "$pr_url" | grep -o '[0-9]\+$')
+    local created_date=$(date +"%d/%m/%Y %I:%M %p")
+    
+    # Create attachment for PR
+    local attachment_mutation='{
+        "query": "mutation CreateAttachment($input: AttachmentCreateInput!) { attachmentCreate(input: $input) { success attachment { id } } }",
+        "variables": {
+            "input": {
+                "issueId": "'$issue_id'",
+                "title": "GitHub PR #'$pr_number': '$pr_title'",
+                "subtitle": "Created '$created_date'",
+                "url": "'$pr_url'",
+                "iconUrl": "https://github.com/favicon.ico"
+            }
+        }
+    }'
+    
+    local response=$(curl -s -X POST \
+        -H "Authorization: $LINEAR_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$attachment_mutation" \
+        "https://api.linear.app/graphql")
+    
+    if echo "$response" | jq -e '.errors' > /dev/null; then
+        print_warning "Could not connect PR to Linear: $(echo "$response" | jq -r '.errors[0].message')"
+        return 1
+    else
+        print_success "PR connected to Linear issue"
+        return 0
+    fi
+}
+
 # Function to push branch and create PR
 create_pull_request() {
     local current_branch="$1"
@@ -371,7 +417,12 @@ main() {
     local pr_description=$(echo "$pr_content" | tail -n +3)
     
     # Create the pull request
-    create_pull_request "$current_branch" "$base_branch" "$pr_title" "$pr_description"
+    local pr_url=$(create_pull_request "$current_branch" "$base_branch" "$pr_title" "$pr_description")
+    
+    # Connect PR to Linear if successful and issue_id available
+    if [[ $? -eq 0 && -n "$pr_url" && -n "$issue_id" ]]; then
+        connect_pr_to_linear "$issue_id" "$pr_url" "$pr_title"
+    fi
     
     echo ""
     print_success "<� PR creation completed successfully!"
