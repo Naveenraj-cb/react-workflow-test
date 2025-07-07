@@ -176,7 +176,8 @@ update_linear_issue() {
     print_status "Adding branch link as comment to Linear issue"
     
     local branch_url="https://github.com/$GITHUB_REPO/tree/$branch_name"
-    local comment_body="🌿 **Branch created:** [$branch_name]($branch_url)\n\nThis branch is ready for development. You can start working on this issue!"
+    local created_date=$(date +"%d/%m/%Y %I:%M %p")
+    local comment_body="🌿 **Branch created:** [$branch_name]($branch_url) - $created_date\n\nThis branch is ready for development. You can start working on this issue!"
     
     local mutation='{
         "query": "mutation CreateComment($input: CommentCreateInput!) { commentCreate(input: $input) { success comment { id } } }",
