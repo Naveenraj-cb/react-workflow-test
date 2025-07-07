@@ -23,9 +23,9 @@
 ## General Guidelines
 
 - Always use the appropriate prefix for commit messages
-- Keep commit messages concise and descriptive
+- Keep commit messages brief and simple
 - Use present tense ("Add feature" not "Added feature")
-- Only include description of what was changed (not why)
+- Only include what was changed
 - Reference Linear issue IDs when applicable
-- Do not add co-author or generated messages
-- Keep it simple and clear
+- No co-author or generated messages
+- Short and clear only
