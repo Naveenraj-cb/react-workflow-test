@@ -158,7 +158,7 @@ get_base_branch() {
     fi
     
     # Prompt user for confirmation
-    echo "📋 Detected base branch: $base_branch"
+    echo "📋 Detected base branch: $base_branch" >&2
     read -p "❓ Is this correct? (y/n/enter different): " confirmation
     
     case $confirmation in
