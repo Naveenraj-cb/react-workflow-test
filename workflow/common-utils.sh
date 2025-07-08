@@ -111,7 +111,7 @@ validate_env_var() {
     local var_value="$2"
     local help_msg="$3"
     
-    if [[ -z "$var_value" || "$var_value" == "your_${var_name,,}_here" ]]; then
+    if [[ -z "$var_value" || "$var_value" == "your_$(echo "$var_name" | tr '[:upper:]' '[:lower:]')_here" ]]; then
         print_error "$var_name not set. Please set it in .env.local file."
         if [[ -n "$help_msg" ]]; then
             echo "$help_msg"
