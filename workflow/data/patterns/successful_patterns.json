@@ -1,0 +1,37 @@
+{
+  "metadata": {
+    "created": "2024-01-15T10:30:00Z",
+    "last_updated": "2024-01-15T10:30:00Z",
+    "version": "1.0.0",
+    "total_sessions_analyzed": 0
+  },
+  "prompt_structures": {
+    "high_success": [],
+    "medium_success": [],
+    "patterns": []
+  },
+  "context_patterns": {
+    "issue_types": {
+      "feature": [],
+      "bug": [],
+      "enhancement": []
+    },
+    "tech_stack": {
+      "react": [],
+      "typescript": [],
+      "jest": []
+    }
+  },
+  "successful_elements": {
+    "opening_phrases": [],
+    "request_structures": [],
+    "context_inclusion": [],
+    "step_specifications": []
+  },
+  "performance_metrics": {
+    "average_success_rate": 0.0,
+    "average_completion_time": 0,
+    "average_user_satisfaction": 0.0,
+    "common_success_indicators": []
+  }
+}

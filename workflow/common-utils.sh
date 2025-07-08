@@ -321,3 +321,287 @@ parse_common_args() {
         esac
     done
 }
+
+# ==============================================================================
+# PROMPT STORAGE & PATTERN ANALYSIS FUNCTIONS
+# ==============================================================================
+
+# Function to generate session ID
+generate_session_id() {
+    # Generate a UUID-like string using date and random
+    echo "$(date +%Y%m%d_%H%M%S)_$(shuf -i 1000-9999 -n 1)"
+}
+
+# Function to get data directory path
+get_data_dir() {
+    echo "$(dirname "$0")/data"
+}
+
+# Function to ensure data directory exists
+ensure_data_dir() {
+    local data_dir=$(get_data_dir)
+    mkdir -p "$data_dir"/{sessions,patterns,templates,analytics,training}
+}
+
+# Function to get current tech stack from package.json and other files
+get_tech_stack() {
+    local tech_stack=()
+    
+    # Check for package.json
+    if [[ -f "package.json" ]]; then
+        if grep -q "react" package.json; then
+            tech_stack+=("react")
+        fi
+        if grep -q "typescript" package.json; then
+            tech_stack+=("typescript")
+        fi
+        if grep -q "jest" package.json; then
+            tech_stack+=("jest")
+        fi
+        if grep -q "next" package.json; then
+            tech_stack+=("nextjs")
+        fi
+        if grep -q "express" package.json; then
+            tech_stack+=("express")
+        fi
+    fi
+    
+    # Check for other tech indicators
+    if [[ -f "tsconfig.json" ]]; then
+        tech_stack+=("typescript")
+    fi
+    if [[ -f "tailwind.config.js" ]]; then
+        tech_stack+=("tailwind")
+    fi
+    
+    # Remove duplicates and join with commas
+    printf '%s\n' "${tech_stack[@]}" | sort -u | tr '\n' ',' | sed 's/,$//'
+}
+
+# Function to get project context
+get_project_context() {
+    local current_branch=$(get_current_branch)
+    local tech_stack=$(get_tech_stack)
+    
+    # Get recent file changes
+    local files_changed=()
+    if git diff --name-only HEAD~1 HEAD > /dev/null 2>&1; then
+        while IFS= read -r file; do
+            files_changed+=("$file")
+        done < <(git diff --name-only HEAD~1 HEAD | head -10)
+    fi
+    
+    # Convert array to JSON array
+    local files_json=$(printf '%s\n' "${files_changed[@]}" | jq -R . | jq -s .)
+    
+    jq -n \
+        --arg branch "$current_branch" \
+        --arg tech_stack "$tech_stack" \
+        --argjson files_changed "$files_json" \
+        '{
+            branch: $branch,
+            tech_stack: ($tech_stack | split(",") | map(select(. != ""))),
+            files_changed: $files_changed,
+            timestamp: now | strftime("%Y-%m-%dT%H:%M:%SZ")
+        }'
+}
+
+# Function to store session data
+store_session_data() {
+    local session_id="$1"
+    local issue_id="$2"
+    local issue_type="$3"
+    local prompt="$4"
+    local template_used="$5"
+    local project_context="$6"
+    
+    ensure_data_dir
+    
+    local data_dir=$(get_data_dir)
+    local session_file="$data_dir/sessions/${session_id}.json"
+    
+    # Create session data JSON
+    jq -n \
+        --arg session_id "$session_id" \
+        --arg issue_id "$issue_id" \
+        --arg issue_type "$issue_type" \
+        --arg prompt "$prompt" \
+        --arg template_used "$template_used" \
+        --argjson project_context "$project_context" \
+        '{
+            timestamp: now | strftime("%Y-%m-%dT%H:%M:%SZ"),
+            session_id: $session_id,
+            issue_id: $issue_id,
+            issue_type: $issue_type,
+            project_context: $project_context,
+            prompt: {
+                original: $prompt,
+                modifications: null,
+                template_used: $template_used
+            },
+            response_quality: {
+                success_rate: null,
+                time_to_completion: null,
+                user_satisfaction: null,
+                follow_up_needed: null
+            },
+            patterns_identified: [],
+            outcome: {
+                task_completed: null,
+                files_modified: null,
+                tests_passed: null,
+                commit_successful: null
+            },
+            status: "initiated"
+        }' > "$session_file"
+    
+    echo "$session_id"
+}
+
+# Function to update session outcome
+update_session_outcome() {
+    local session_id="$1"
+    local success_rate="$2"
+    local user_satisfaction="$3"
+    local task_completed="$4"
+    local files_modified="$5"
+    
+    ensure_data_dir
+    
+    local data_dir=$(get_data_dir)
+    local session_file="$data_dir/sessions/${session_id}.json"
+    
+    if [[ -f "$session_file" ]]; then
+        # Update the session file with outcome data
+        jq --arg success_rate "$success_rate" \
+           --arg user_satisfaction "$user_satisfaction" \
+           --arg task_completed "$task_completed" \
+           --arg files_modified "$files_modified" \
+           '.response_quality.success_rate = ($success_rate | tonumber) |
+            .response_quality.user_satisfaction = ($user_satisfaction | tonumber) |
+            .outcome.task_completed = ($task_completed == "true") |
+            .outcome.files_modified = ($files_modified | tonumber) |
+            .status = "completed"' \
+           "$session_file" > "$session_file.tmp" && mv "$session_file.tmp" "$session_file"
+    fi
+}
+
+# Function to analyze patterns from sessions
+analyze_session_patterns() {
+    local data_dir=$(get_data_dir)
+    local sessions_dir="$data_dir/sessions"
+    local patterns_file="$data_dir/patterns/successful_patterns.json"
+    
+    if [[ ! -d "$sessions_dir" ]]; then
+        return 0
+    fi
+    
+    local total_sessions=0
+    local successful_sessions=0
+    local total_satisfaction=0
+    local successful_patterns=()
+    
+    # Analyze all session files
+    for session_file in "$sessions_dir"/*.json; do
+        if [[ -f "$session_file" ]]; then
+            total_sessions=$((total_sessions + 1))
+            
+            local success_rate=$(jq -r '.response_quality.success_rate // 0' "$session_file")
+            local satisfaction=$(jq -r '.response_quality.user_satisfaction // 0' "$session_file")
+            
+            # Consider successful if success_rate > 0.7 and satisfaction > 3.5
+            if (( $(echo "$success_rate > 0.7" | bc -l) )) && (( $(echo "$satisfaction > 3.5" | bc -l) )); then
+                successful_sessions=$((successful_sessions + 1))
+                
+                # Extract patterns from successful sessions
+                local issue_type=$(jq -r '.issue_type' "$session_file")
+                local template_used=$(jq -r '.prompt.template_used' "$session_file")
+                successful_patterns+=("$issue_type:$template_used")
+            fi
+            
+            total_satisfaction=$(echo "$total_satisfaction + $satisfaction" | bc -l)
+        fi
+    done
+    
+    # Update patterns file
+    if [[ $total_sessions -gt 0 ]]; then
+        local avg_satisfaction=$(echo "scale=2; $total_satisfaction / $total_sessions" | bc -l)
+        local success_rate=$(echo "scale=2; $successful_sessions / $total_sessions" | bc -l)
+        
+        jq --arg total_sessions "$total_sessions" \
+           --arg avg_satisfaction "$avg_satisfaction" \
+           --arg success_rate "$success_rate" \
+           '.metadata.total_sessions_analyzed = ($total_sessions | tonumber) |
+            .metadata.last_updated = now | strftime("%Y-%m-%dT%H:%M:%SZ") |
+            .performance_metrics.average_success_rate = ($success_rate | tonumber) |
+            .performance_metrics.average_user_satisfaction = ($avg_satisfaction | tonumber)' \
+           "$patterns_file" > "$patterns_file.tmp" && mv "$patterns_file.tmp" "$patterns_file"
+    fi
+}
+
+# Function to get session feedback
+get_session_feedback() {
+    local session_id="$1"
+    
+    echo ""
+    echo "📊 Session Feedback (Session ID: $session_id)"
+    echo "=============================================="
+    echo ""
+    
+    # Get user satisfaction rating
+    echo "How satisfied are you with Claude's performance? (1-5 scale)"
+    echo "1 = Very Poor, 2 = Poor, 3 = Average, 4 = Good, 5 = Excellent"
+    read -p "Rating: " satisfaction
+    
+    # Validate input
+    if ! [[ "$satisfaction" =~ ^[1-5]$ ]]; then
+        satisfaction="3"
+        echo "Invalid input, defaulting to 3 (Average)"
+    fi
+    
+    # Get task completion status
+    echo ""
+    echo "Was the task completed successfully? (y/n)"
+    read -p "Completed: " completed
+    
+    case "$completed" in
+        y|Y|yes|Yes)
+            completed="true"
+            ;;
+        *)
+            completed="false"
+            ;;
+    esac
+    
+    # Get number of files modified (approximate)
+    echo ""
+    echo "Approximately how many files were modified/created? (number)"
+    read -p "Files modified: " files_modified
+    
+    # Validate number
+    if ! [[ "$files_modified" =~ ^[0-9]+$ ]]; then
+        files_modified="0"
+    fi
+    
+    # Calculate success rate based on completion and satisfaction
+    local success_rate
+    if [[ "$completed" == "true" && "$satisfaction" -ge 4 ]]; then
+        success_rate="0.9"
+    elif [[ "$completed" == "true" && "$satisfaction" -ge 3 ]]; then
+        success_rate="0.7"
+    elif [[ "$completed" == "true" ]]; then
+        success_rate="0.5"
+    else
+        success_rate="0.2"
+    fi
+    
+    # Update session with feedback
+    update_session_outcome "$session_id" "$success_rate" "$satisfaction" "$completed" "$files_modified"
+    
+    # Analyze patterns after each session
+    analyze_session_patterns
+    
+    echo ""
+    print_success "Thank you for your feedback! This helps improve future prompts."
+    echo ""
+}

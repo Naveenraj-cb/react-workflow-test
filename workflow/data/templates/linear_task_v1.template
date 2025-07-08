@@ -1,0 +1,50 @@
+# Linear Task Template v1.0
+
+## Template Metadata
+- **Version**: 1.0
+- **Created**: 2024-01-15
+- **Success Rate**: TBD
+- **Use Case**: General Linear task processing
+
+## Template Structure
+
+```
+I'm working on a Linear issue and need your help to implement it.
+
+**Issue Details:**
+- ID: {{issue_id}}
+- Title: {{title}}
+- Description: {{description}}
+- State: {{state}}
+- Team: {{team}}
+- Current Branch: {{current_branch}}
+
+**Request:**
+Please help me implement this task. Analyze the requirements and provide guidance on:
+1. What files need to be created or modified
+2. The implementation approach
+3. Any dependencies or considerations
+4. Step-by-step implementation plan
+
+Please start by understanding the codebase structure and then provide your recommendations.
+```
+
+## Variables
+- `{{issue_id}}`: Linear issue identifier
+- `{{title}}`: Issue title
+- `{{description}}`: Issue description
+- `{{state}}`: Current issue state
+- `{{team}}`: Team key
+- `{{current_branch}}`: Current git branch
+
+## Success Indicators
+- Clear step-by-step approach
+- File-specific recommendations
+- Dependency identification
+- Implementation plan provided
+
+## Improvement Notes
+- Monitor effectiveness
+- Track user modifications
+- Analyze successful vs failed outcomes
+- Evolve based on pattern analysis

@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2024-01-15T10:30:00Z",
+    "last_updated": "2024-01-15T10:30:00Z",
+    "description": "Adaptive prompt templates based on learned patterns"
+  },
+  "templates": {
+    "bug_fix": {
+      "name": "Bug Fix Template",
+      "success_rate": 0.0,
+      "usage_count": 0,
+      "template": "I need help fixing a bug in our {{tech_stack}} application.\n\n**Bug Details:**\n- Issue ID: {{issue_id}}\n- Title: {{title}}\n- Description: {{description}}\n- Current Branch: {{current_branch}}\n- Tech Stack: {{tech_stack_list}}\n\n**Request:**\nPlease help me:\n1. Analyze the bug and identify the root cause\n2. Locate the problematic code files\n3. Provide a step-by-step fix with error handling\n4. Include comprehensive test cases to prevent regression\n5. Consider any side effects or dependencies\n\n**Context:**\nRecent changes: {{recent_files}}\n\nPlease start by examining the codebase to understand the current implementation.",
+      "variables": ["issue_id", "title", "description", "current_branch", "tech_stack", "tech_stack_list", "recent_files"],
+      "patterns": ["error_analysis", "test_coverage", "root_cause_identification"]
+    },
+    "feature_implementation": {
+      "name": "Feature Implementation Template",
+      "success_rate": 0.0,
+      "usage_count": 0,
+      "template": "I need to implement a new feature in our {{tech_stack}} application.\n\n**Feature Details:**\n- Issue ID: {{issue_id}}\n- Title: {{title}}\n- Description: {{description}}\n- Current Branch: {{current_branch}}\n- Tech Stack: {{tech_stack_list}}\n\n**Request:**\nPlease provide:\n1. Complete implementation approach and architecture\n2. File structure and component breakdown\n3. Step-by-step implementation plan\n4. Integration points with existing code\n5. Testing strategy and coverage plan\n6. Documentation requirements\n\n**Project Context:**\nExisting patterns: {{existing_patterns}}\nRecent changes: {{recent_files}}\n\nPlease analyze the existing codebase first to maintain consistency with current patterns.",
+      "variables": ["issue_id", "title", "description", "current_branch", "tech_stack", "tech_stack_list", "existing_patterns", "recent_files"],
+      "patterns": ["architecture_planning", "pattern_consistency", "integration_analysis"]
+    },
+    "enhancement": {
+      "name": "Enhancement Template",
+      "success_rate": 0.0,
+      "usage_count": 0,
+      "template": "I need to enhance an existing feature in our {{tech_stack}} application.\n\n**Enhancement Details:**\n- Issue ID: {{issue_id}}\n- Title: {{title}}\n- Description: {{description}}\n- Current Branch: {{current_branch}}\n- Tech Stack: {{tech_stack_list}}\n\n**Request:**\nPlease help me:\n1. Analyze the current implementation\n2. Identify improvement opportunities\n3. Design the enhancement approach\n4. Provide implementation steps that maintain backward compatibility\n5. Update existing tests and add new ones\n6. Consider performance implications\n\n**Current State:**\nExisting code: {{existing_code_context}}\nRecent changes: {{recent_files}}\n\nPlease review the existing implementation before suggesting enhancements.",
+      "variables": ["issue_id", "title", "description", "current_branch", "tech_stack", "tech_stack_list", "existing_code_context", "recent_files"],
+      "patterns": ["backward_compatibility", "performance_optimization", "incremental_improvement"]
+    },
+    "react_specific": {
+      "name": "React-Specific Template",
+      "success_rate": 0.0,
+      "usage_count": 0,
+      "template": "I'm working on a React component for our application.\n\n**Component Details:**\n- Issue ID: {{issue_id}}\n- Title: {{title}}\n- Description: {{description}}\n- Current Branch: {{current_branch}}\n\n**Request:**\nPlease help me:\n1. Design the component architecture and props interface\n2. Implement with proper TypeScript types (if applicable)\n3. Include proper state management and lifecycle handling\n4. Add comprehensive testing with React Testing Library\n5. Ensure accessibility and performance best practices\n6. Follow existing component patterns in the codebase\n\n**React Context:**\nExisting components: {{existing_components}}\nState management: {{state_management}}\nStyling approach: {{styling_approach}}\n\nPlease analyze existing React patterns before implementation.",
+      "variables": ["issue_id", "title", "description", "current_branch", "existing_components", "state_management", "styling_approach"],
+      "patterns": ["component_architecture", "typescript_integration", "react_testing", "accessibility"]
+    },
+    "typescript_specific": {
+      "name": "TypeScript-Specific Template",
+      "success_rate": 0.0,
+      "usage_count": 0,
+      "template": "I need help with TypeScript implementation in our application.\n\n**TypeScript Task:**\n- Issue ID: {{issue_id}}\n- Title: {{title}}\n- Description: {{description}}\n- Current Branch: {{current_branch}}\n\n**Request:**\nPlease provide:\n1. Proper type definitions and interfaces\n2. Generic types where appropriate\n3. Strict type checking compliance\n4. Integration with existing type system\n5. Type-safe error handling\n6. Documentation for complex types\n\n**Type Context:**\nExisting types: {{existing_types}}\nType strictness level: {{strictness_level}}\nTesting approach: {{testing_approach}}\n\nPlease ensure type safety and consistency with existing patterns.",
+      "variables": ["issue_id", "title", "description", "current_branch", "existing_types", "strictness_level", "testing_approach"],
+      "patterns": ["type_safety", "generic_types", "interface_design", "strict_checking"]
+    }
+  },
+  "adaptation_rules": {
+    "issue_type_mapping": {
+      "bug": "bug_fix",
+      "feature": "feature_implementation",
+      "enhancement": "enhancement",
+      "task": "feature_implementation"
+    },
+    "tech_stack_mapping": {
+      "react": "react_specific",
+      "typescript": "typescript_specific"
+    },
+    "success_threshold": 0.8,
+    "min_usage_for_adaptation": 3
+  },
+  "pattern_weights": {
+    "error_analysis": 1.2,
+    "test_coverage": 1.1,
+    "architecture_planning": 1.3,
+    "pattern_consistency": 1.1,
+    "type_safety": 1.2,
+    "component_architecture": 1.1,
+    "accessibility": 1.0,
+    "performance_optimization": 1.1,
+    "backward_compatibility": 1.2
+  }
+}
