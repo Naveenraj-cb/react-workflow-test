@@ -354,6 +354,19 @@ main() {
             echo ""
             print_status "Run later with: ./mark-task-complete.sh -i $issue_id"
         fi
+        
+        echo ""
+        echo "🔄 Would you like to sync changes to client repository? (y/n)"
+        read -r sync_response
+        
+        if [[ "$sync_response" =~ ^[Yy]$ ]]; then
+            echo ""
+            print_status "Running sync-to-client script..."
+            "$(dirname "$0")/sync-to-client.sh"
+        else
+            echo ""
+            print_status "Run later with: ./sync-to-client.sh"
+        fi
     fi
 }
 

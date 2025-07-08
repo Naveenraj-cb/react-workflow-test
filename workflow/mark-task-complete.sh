@@ -386,6 +386,19 @@ main() {
         echo "⏱️  Duration: $branch_age"
         echo ""
         print_success "✅ Metrics comment posted to Linear issue successfully!"
+        
+        echo ""
+        echo "🔄 Would you like to sync changes to client repository? (y/n)"
+        read -r sync_response
+        
+        if [[ "$sync_response" =~ ^[Yy]$ ]]; then
+            echo ""
+            print_status "Running sync-to-client script..."
+            "$(dirname "$0")/sync-to-client.sh"
+        else
+            echo ""
+            print_status "Run later with: ./sync-to-client.sh"
+        fi
     else
         echo ""
         print_error "Task completion process had issues with metrics posting"
