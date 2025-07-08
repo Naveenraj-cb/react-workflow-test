@@ -4,18 +4,18 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 
 ## Tools and Scripts
 
-- `task-branch-checkout.sh` - Checkout branches for Linear tasks
-- `prompt-claude.sh` - Utility for prompting Claude AI
+- `create-task-branch.sh` - Create and checkout branches for Linear tasks
+- `perform-task.sh` - Get AI assistance for performing Linear tasks
 - `raise-pr.sh` - Creates GitHub pull requests with Linear integration
-- `complete-task.sh` - Marks Linear tasks as complete and adds metrics
+- `mark-task-complete.sh` - Marks Linear tasks as complete and adds metrics
 
 ## Workflow
 
-1. Use `task-branch-checkout.sh` to create and checkout feature branch from Linear task
-2. Use `prompt-claude.sh` to get AI assistance for the task
+1. Use `create-task-branch.sh` to create and checkout feature branch from Linear task
+2. Use `perform-task.sh` to get AI assistance for the task
 3. Make changes and commit with appropriate prefix ([AI] or [DEV])
 4. Use `raise-pr.sh` to create pull request
-5. Use `complete-task.sh` to mark Linear task as complete and add metrics
+5. Use `mark-task-complete.sh` to mark Linear task as complete and add metrics
 
 ## Setup
 
@@ -41,25 +41,25 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 
 ## Usage Examples
 
-### 1. Task Branch Checkout Script
+### 1. Create Task Branch Script
 ```bash
 # Create branch from Linear issue
-./task-branch-checkout.sh -i COD-294
+./create-task-branch.sh -i COD-294
 
 # Create branch from different base branch
-./task-branch-checkout.sh -i COD-294 -b develop
+./create-task-branch.sh -i COD-294 -b develop
 
 # Create branch but don't checkout locally
-./task-branch-checkout.sh -i COD-294 --skip-checkout
+./create-task-branch.sh -i COD-294 --skip-checkout
 ```
 
-### 2. Prompt Claude Script
+### 2. Perform Task Script
 ```bash
 # Get AI assistance for a Linear task
-./prompt-claude.sh -i COD-294
+./perform-task.sh -i COD-294
 
 # Use with custom prompt
-./prompt-claude.sh -i COD-294 -p "Help me implement this feature"
+./perform-task.sh -i COD-294 -p "Help me implement this feature"
 ```
 
 ### 3. Raise PR Script
@@ -77,11 +77,11 @@ This directory contains automation scripts for managing Linear tasks and GitHub 
 ./raise-pr.sh -t "Add new feature" -d "This PR adds..."
 ```
 
-### 4. Complete Task Script
+### 4. Mark Task Complete Script
 ```bash
 # Mark Linear task as complete
-./complete-task.sh -i COD-294
+./mark-task-complete.sh -i COD-294
 
 # Skip status update, only add metrics
-./complete-task.sh -i COD-294 --skip-status-update
+./mark-task-complete.sh -i COD-294 --skip-status-update
 ```

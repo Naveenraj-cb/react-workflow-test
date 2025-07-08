@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Prompt Claude Script
-# This script prompts Claude with task title and description from Linear issue
+# Perform Task Script
+# This script gets AI assistance for performing Linear tasks
 
 set -e
 
@@ -116,7 +116,7 @@ prompt_claude() {
 
 # Main function
 main() {
-    echo "🤖 Claude Task Prompt Tool"
+    echo "🤖 Perform Task Tool"
     echo "=========================="
     
     # Parse command line arguments

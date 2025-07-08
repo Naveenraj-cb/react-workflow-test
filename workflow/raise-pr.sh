@@ -343,16 +343,16 @@ main() {
         echo "   2. Request reviews from team members"
         echo "   3. Merge the PR when approved"
         echo ""
-        echo "🤖 Would you like to run the complete-task script now? (y/n)"
+        echo "🤖 Would you like to run the mark-task-complete script now? (y/n)"
         read -r complete_task_response
         
         if [[ "$complete_task_response" =~ ^[Yy]$ ]]; then
             echo ""
-            print_status "Running complete-task script..."
-            "$(dirname "$0")/complete-task.sh" -i "$issue_id"
+            print_status "Running mark-task-complete script..."
+            "$(dirname "$0")/mark-task-complete.sh" -i "$issue_id"
         else
             echo ""
-            print_status "Run later with: ./complete-task.sh -i $issue_id"
+            print_status "Run later with: ./mark-task-complete.sh -i $issue_id"
         fi
     fi
 }

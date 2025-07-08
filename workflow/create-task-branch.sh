@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Task Branch Checkout Script
+# Create Task Branch Script
 # This script creates GitHub branches from Linear issues and checks them out locally
 
 set -e
@@ -116,7 +116,7 @@ update_linear_issue() {
     
     local branch_url="https://github.com/$GITHUB_REPO/tree/$branch_name"
     local created_date=$(get_current_date)
-    local comment_body="🌿 **Branch created:** [$branch_name]($branch_url) - $created_date\n\nThis branch is ready for development. You can start working on this issue!"
+    local comment_body="🔀 **Branch created:** [$branch_name]($branch_url) - $created_date\n\nThis branch is ready for development. You can start working on this issue!"
     
     # Create attachment for branch link
     local attachment_id=$(create_linear_attachment "$issue_id" "GitHub Branch: '$branch_name'" "Created '$created_date'" "$branch_url" "https://github.com/favicon.ico")
@@ -197,7 +197,7 @@ generate_branch_name() {
 
 # Main function
 main() {
-    echo "🔗 Task Branch Checkout Tool"
+    echo "🔗 Create Task Branch Tool"
     echo "=================================="
     
     # Parse command line arguments
@@ -306,7 +306,7 @@ main() {
     echo ""
     print_success "Integration complete!"
     echo "📋 Issue: $issue_title"
-    echo "🌿 Branch: $branch_name"
+    echo "🔀 Branch: $branch_name"
     echo "🔗 GitHub: https://github.com/$GITHUB_REPO/tree/$branch_name"
     echo ""
     
@@ -318,14 +318,14 @@ main() {
         echo ""
         print_status "Launching Claude prompt..."
         # Pass the issue data directly to avoid another API call
-        echo "$issue_data" | "$(dirname "$0")/prompt-claude.sh" --from-stdin
+        echo "$issue_data" | "$(dirname "$0")/perform-task.sh" --from-stdin
     else
         echo ""
         echo "Next steps:"
         echo "1. Start working on your feature"
         echo "2. Use (ai) and (dev) tags in commit messages"
         echo "3. Push changes: git push origin $branch_name"
-        echo "4. Or run: ./workflow/prompt-claude.sh -i $issue_id"
+        echo "4. Or run: ./workflow/perform-task.sh -i $issue_id"
     fi
 }
 
