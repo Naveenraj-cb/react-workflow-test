@@ -34,7 +34,11 @@ function App() {
         </a>
       </header>
       <div className="color-dropdown">
+        <label htmlFor="color-selector" className="color-label">
+          Background Color:
+        </label>
         <select 
+          id="color-selector"
           value={selectedColor} 
           onChange={(e) => handleColorChange(e.target.value)}
           className="color-selector"
